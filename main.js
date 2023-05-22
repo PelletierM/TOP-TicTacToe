@@ -1,16 +1,6 @@
 const boardSize = 3;
 const winStreak = 3;
 
-function generateBoard(size) {
-  let gameboard = {};
-  for (let x = 0; x < size; x += 1) {
-    for (let y = 0; y < size; y += 1) {
-      gameboard[`x${x}y${y}`] = false;
-    }
-  }
-  return gameboard;
-}
-
 const checkGameOver = (() => {
   function checkOffsetOverflow(position) {
     let x = position[0];
@@ -113,15 +103,29 @@ const createPlayer = (() => {
   return Player;
 })();
 
-let board1 = generateBoard(3);
-let testBoard = {
-  x0y0: 'max',
-  x0y1: 'max',
-  x0y2: 'Andy',
-  x1y0: 'max',
-  x1y1: 'tom',
-  x1y2: 'Andy',
-  x2y0: 'max',
-  x2y1: 'tom',
-  x2y2: 'Mike',
-};
+const mainBoard = (() => {
+  function generateBoardVirtual(size) {
+    let gameboard = {};
+    for (let x = 0; x < size; x += 1) {
+      for (let y = 0; y < size; y += 1) {
+        gameboard[`x${x}y${y}`] = false;
+      }
+    }
+    return gameboard;
+  }
+
+  function generateBoardDOM(board) {
+    let container = document.querySelector('.gameboard');
+    document.querySelector(':root').style.setProperty('--board-size', boardSize);
+    Object.keys(board).forEach((key) => {
+      const element = document.createElement('div');
+      element.dataset.index = key;
+      container.appendChild(element);
+    });
+  }
+
+  let boardVirtual = generateBoardVirtual(boardSize);
+  generateBoardDOM(boardVirtual);
+
+  return boardVirtual;
+})();
