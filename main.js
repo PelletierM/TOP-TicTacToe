@@ -1,11 +1,12 @@
 const boardSize = 3;
 const winStreak = 3;
+let players = {};
 
 const checkGameOver = (() => {
   function checkOffsetOverflow(position) {
     let x = position[0];
     let y = position[1];
-    if (x < 0 || y < 0 || x >= boardSize || y >= boardSize) {
+    if (x < 1 || y < 1 || x > boardSize || y > boardSize) {
       return true;
     }
     return false;
@@ -48,8 +49,8 @@ const checkGameOver = (() => {
   }
 
   function checkWin(gameboard) {
-    for (let x = 0; x < boardSize; x += 1) {
-      for (let y = 0; y < boardSize; y += 1) {
+    for (let x = 1; x <= boardSize; x += 1) {
+      for (let y = 1; y <= boardSize; y += 1) {
         const position = [x, y];
         const currentValue = gameboard[`x${x}y${y}`];
         if (currentValue && checkAround(gameboard, position)) {
@@ -82,23 +83,12 @@ const checkGameOver = (() => {
 })();
 
 const createPlayer = (() => {
-  const generateCounter = () => {
-    let count = 0;
-    return () => {
-      count += 1;
-      return count;
-    };
-  };
-
-  const counter = generateCounter();
-
   const Player = (username, isHuman) => {
-    let output = {
-      id: counter(),
-      isHuman,
+    let newPlayer = {
       username,
+      isHuman,
     };
-    return output;
+    return newPlayer;
   };
   return Player;
 })();
@@ -106,8 +96,8 @@ const createPlayer = (() => {
 const mainBoard = (() => {
   function generateBoardVirtual(size) {
     let gameboard = {};
-    for (let x = 0; x < size; x += 1) {
-      for (let y = 0; y < size; y += 1) {
+    for (let x = 1; x <= size; x += 1) {
+      for (let y = 1; y <= size; y += 1) {
         gameboard[`x${x}y${y}`] = false;
       }
     }
@@ -115,7 +105,7 @@ const mainBoard = (() => {
   }
 
   function generateBoardDOM(board) {
-    let container = document.querySelector('.gameboard');
+    const container = document.querySelector('.gameboard');
     document.querySelector(':root').style.setProperty('--board-size', boardSize);
     Object.keys(board).forEach((key) => {
       const element = document.createElement('div');
@@ -124,8 +114,120 @@ const mainBoard = (() => {
     });
   }
 
-  let boardVirtual = generateBoardVirtual(boardSize);
+  const boardVirtual = generateBoardVirtual(boardSize);
   generateBoardDOM(boardVirtual);
-
   return boardVirtual;
 })();
+
+players[`player${Object.keys(players).length + 1}`] = createPlayer('Mike', true);
+players[`player${Object.keys(players).length + 1}`] = createPlayer('Tom', true);
+
+const container = document.querySelector('.gameboard');
+let currentPlayerKey = `${Object.keys(players)[Math.floor(Math.random()
+* Object.keys(players).length)]}`;
+
+function nextPlayer(currentPlayer) {
+  let currentIndex = Object.keys(players).indexOf(currentPlayer);
+  if (currentIndex + 1 >= Object.keys(players).length) {
+    return `${Object.keys(players)[0]}`;
+  }
+  return `${Object.keys(players)[currentIndex + 1]}`;
+}
+
+/*
+function selectPositionAI(options) {
+  let optionsRating = [];
+  options.forEach((option) => {
+    let winningOdds = {};
+    for (let i = 1; i <= options.length; i += 1) {
+      winningOdds[i] = 0;
+    }
+
+    const simulate = (currentOption, realOptions, realBoard, currentPlayerID, level) => {
+      let simSelect = [];
+      (() => {
+        let simOptions = realOptions.slice();
+        let simBoard = {};
+        Object.keys(realBoard).forEach((key) => {
+          simBoard[key] = realBoard[key];
+        });
+        simBoard[currentOption] = currentPlayerID;
+        let simGameState = checkGameOver(simBoard);
+        if (simGameState.win) {
+          if (currentPlayerID === currentPlayerKey) {
+            simSelect.push(currentOption);
+          } else {
+              );
+          }
+        } else {
+          simOptions.splice(simOptions.indexOf(currentOption), 1);
+          let nextLevel = level + 1;
+          let nextSimPlayer = nextPlayer(currentPlayerID);
+          simOptions.forEach((simOption) => simulate(simOption, simOptions, simBoard, nextSimPlayer, nextLevel));
+        }
+      })();
+    };
+    simulate(option, options, mainBoard, currentPlayerKey, 1);
+    optionsRating.push(winningOdds);
+  });
+  console.log(optionsRating, options);
+}
+*/
+
+function selectPositionAI(options) {
+  options.forEach((option) => {
+    // eslint-disable-next-line max-len
+    function simulate(currentOption, parentOptions, parentBoard, playerKey, parentLevel, parentOptionScore) {
+      let simOptions = parentOptions.slice();
+      let simBoard = {};
+      Object.keys(parentBoard).forEach((key) => {
+        simBoard[key] = parentBoard[key];
+      });
+      const simLevel = parentLevel + 1;
+      let simOptionScore = {};
+      simOptionScore[simLevel] = {
+        value: 0,
+        forcedOffense: 0,
+        forcedDefense: 0,
+      };
+      Object.assign(simOptionScore, parentOptionScore);
+      simBoard[currentOption] = playerKey;
+      if (checkGameOver(simBoard).win) {
+        simOptionScore[simLevel].forcedOffense += 1;
+        return simOptionScore;
+      }
+      let nextPlayerKey = nextPlayer(playerKey);
+      simBoard[currentOption] = nextPlayerKey;
+      if (checkGameOver(simBoard).win) {
+        simOptionScore[simLevel].forcedDefense += 1;
+        simBoard[currentOption] = playerKey;
+        return simOptionScore;
+      }
+    }
+    simulate(option, options, mainBoard, currentPlayerKey, 0, {});
+  });
+}
+
+function playRoundAI() {
+  if (players[currentPlayerKey].isHuman) {
+    const validPositions = Object.keys(mainBoard).filter((key) => !mainBoard[key]);
+    selectPositionAI(validPositions);
+  }
+}
+
+function playRoundHuman(event) {
+  const position = event.target.dataset.index;
+  const currentElement = document.querySelector(`[data-index='${position}']`);
+  if (!mainBoard[position]) {
+    currentElement.classList.add(currentPlayerKey);
+    mainBoard[position] = currentPlayerKey;
+    if (checkGameOver(mainBoard).win || checkGameOver(mainBoard).fullBoard) {
+      container.removeEventListener('click', playRoundHuman);
+    } else {
+      currentPlayerKey = nextPlayer(currentPlayerKey);
+    }
+    playRoundAI();
+  }
+}
+
+container.addEventListener('click', playRoundHuman);

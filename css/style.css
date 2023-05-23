@@ -1,5 +1,5 @@
 :root{
-  --board-size : 1;
+  --board-size : 1; /* Real size set with main.js */
 }
 
 * {
@@ -23,4 +23,12 @@ body {
   display: grid;
   grid-template-rows: repeat(var(--board-size), calc(40vw / var(--board-size)));
   grid-template-columns: repeat(var(--board-size), calc(40vw / var(--board-size)));  
+}
+
+.gameboard .player1 {
+  background-color: red;
+}
+
+.gameboard .player2 {
+  background-color: blue;
 }
