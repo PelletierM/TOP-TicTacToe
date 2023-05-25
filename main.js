@@ -176,37 +176,45 @@ function selectPositionAI(options) {
 
 function selectPositionAI(options) {
   options.forEach((option) => {
-    // eslint-disable-next-line max-len
-    function simulate(currentOption, parentOptions, parentBoard, playerKey, parentLevel, parentOptionScore) {
+  // eslint-disable-next-line max-len
+    function simulate(currentOption, parentOptions, parentBoard, playerKey, parentLevel) {
       let simOptions = parentOptions.slice();
       let simBoard = {};
       Object.keys(parentBoard).forEach((key) => {
         simBoard[key] = parentBoard[key];
       });
       const simLevel = parentLevel + 1;
-      let simOptionScore = {};
-      simOptionScore[simLevel] = {
-        value: 0,
-        forcedOffense: 0,
-        forcedDefense: 0,
-      };
-      Object.assign(simOptionScore, parentOptionScore);
+      let simArray = [];
       simBoard[currentOption] = playerKey;
       if (checkGameOver(simBoard).win) {
-        simOptionScore[simLevel].forcedOffense += 1;
-        return simOptionScore;
+        if (playerKey === currentPlayerKey) {
+          simArray.push([1, currentOption]);
+        } else {
+          simArray.push([-1, currentOption]);
+        }
+      } else {
+        simOptions.splice(simOptions.indexOf(currentOption), 1);
+        const nextSimPlayer = nextPlayer(playerKey);
+        if (simOptions.length > 0) {
+          simOptions.forEach((simOption) => {
+            simArray.push(simulate(simOption, simOptions, simBoard, nextSimPlayer, simLevel));
+          });
+        }
       }
-      let nextPlayerKey = nextPlayer(playerKey);
-      simBoard[currentOption] = nextPlayerKey;
-      if (checkGameOver(simBoard).win) {
-        simOptionScore[simLevel].forcedDefense += 1;
-        simBoard[currentOption] = playerKey;
-        return simOptionScore;
-      }
+      return simArray;
     }
-    simulate(option, options, mainBoard, currentPlayerKey, 0, {});
+    let mainArray = simulate(option, options, mainBoard, currentPlayerKey, 0);
+    console.log(mainArray);
   });
 }
+
+/* current play state is either : forced win, forced defense or 0
+        if it's a forced win, you return "win or loss"?
+        if it's 0, you simulate next State and return the score;
+
+          return of next Simulate : Wins / Losses, Forced Defense (with a score), score
+          if it's a win : Score + 1, forced Defense : score
+      */
 
 function playRoundAI() {
   if (players[currentPlayerKey].isHuman) {
